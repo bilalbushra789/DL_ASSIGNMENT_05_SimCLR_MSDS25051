@@ -31,7 +31,7 @@ splits/
 ```bash
 python generate_splits.py
 ```
-> **Replace these with TA-provided files before final submission.**
+
 
 ---
 
