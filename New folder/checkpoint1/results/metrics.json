@@ -1,0 +1,23 @@
+{
+  "student_name": "bilal bushra",
+  "roll_number": "msds25051",
+  "seed": 2026,
+  "batch_size": 128,
+  "simclr_epochs": 50,
+  "linear_probe_epochs": 20,
+  "finetuning_epochs": 20,
+  "learning_rate": 0.0003,
+  "temperature": 0.5,
+  "supervised_10percent_test_acc": 0.6917,
+  "random_linear_probe_test_acc": 0.0,
+  "simclr_linear_probe_test_acc": 0.0,
+  "simclr_finetune_test_acc": 0.0,
+  "same_view_similarity_before": 0.9889,
+  "different_image_similarity_before": 0.9855,
+  "same_view_similarity_after": 0.0,
+  "different_image_similarity_after": 0.0,
+  "github_repo_url": "",
+  "first_commit_date": "",
+  "last_commit_before_deadline": "",
+  "number_of_meaningful_commits": 0
+}
