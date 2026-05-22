@@ -1,55 +1,57 @@
 """
 Task 2: Understanding Augmentations
-=====================================
-Implements the SimCLR augmentation pipeline and TwoViewTransform.
-Visualizes 10 examples: Original | Augmented View 1 | Augmented View 2
-Output:
-    results/augmentation_examples.png
+Deep Learning Spring 2026 - Assignment 5 SimCLR
+Checkpoint 1
+
+Implements the SimCLR two-view transform and visualises augmentations.
+Saves:
+  results/augmentation_examples.png
 """
 
 import os
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import torch
-from torch.utils.data import DataLoader, Subset
-from torchvision import datasets, transforms
+import torchvision.transforms as T
+from torch.utils.data import DataLoader
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils.seed import set_seed
+from utils.dataset_splits import get_cifar10_subset, TwoViewDataset
+from utils.visualization import save_augmentation_grid
 
-# ── Paths ──────────────────────────────────────────────────────────────────
-SPLIT_DIR  = "splits"
-DATA_DIR   = "./data"
-RESULT_DIR = "results"
-os.makedirs(RESULT_DIR, exist_ok=True)
+import matplotlib.pyplot as plt
+import numpy as np
+
+# ─── Paths ────────────────────────────────────────────────────────────────────
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+DATA_ROOT   = os.path.join(BASE_DIR, "data")
+SPLITS_DIR  = os.path.join(BASE_DIR, "splits")
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
+
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 SEED = 2026
+CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
+CIFAR10_STD  = (0.2470, 0.2435, 0.2616)
 
 
-# ══════════════════════════════════════════════════════════════════════════
-#  SimCLR Augmentation Pipeline  (exactly as specified in the assignment)
-# ══════════════════════════════════════════════════════════════════════════
-simclr_transform = transforms.Compose([
-    transforms.RandomResizedCrop(size=32, scale=(0.2, 1.0)),
-    transforms.RandomHorizontalFlip(p=0.5),
-    transforms.ColorJitter(brightness=0.4, contrast=0.4,
-                           saturation=0.4, hue=0.1),
-    transforms.RandomGrayscale(p=0.2),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=(0.4914, 0.4822, 0.4465),
-                         std=(0.2470, 0.2435, 0.2616)),
+# ─── SimCLR Augmentation Pipeline (as specified in assignment) ────────────────
+simclr_transform = T.Compose([
+    T.RandomResizedCrop(size=32, scale=(0.2, 1.0)),
+    T.RandomHorizontalFlip(p=0.5),
+    T.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1),
+    T.RandomGrayscale(p=0.2),
+    T.ToTensor(),
+    T.Normalize(mean=CIFAR10_MEAN, std=CIFAR10_STD),
 ])
 
 
-# ══════════════════════════════════════════════════════════════════════════
-#  Two-View Wrapper  (must be implemented yourself per assignment rules)
-# ══════════════════════════════════════════════════════════════════════════
+# ─── Two-View Transform (as required by assignment) ───────────────────────────
 class TwoViewTransform:
-    """
-    Applies the same stochastic transform twice to produce two
-    differently-augmented views of the same image.
-    """
+    """Applies the same stochastic transform twice to produce two different views."""
+
     def __init__(self, transform):
         self.transform = transform
 
@@ -59,139 +61,119 @@ class TwoViewTransform:
         return view1, view2
 
 
-# ══════════════════════════════════════════════════════════════════════════
-#  Helper: un-normalise a tensor for display
-# ══════════════════════════════════════════════════════════════════════════
-MEAN = np.array([0.4914, 0.4822, 0.4465])
-STD  = np.array([0.2470, 0.2435, 0.2616])
-
-def denormalize(tensor):
-    """Convert a normalised CHW tensor to a displayable HWC numpy array."""
-    img = tensor.permute(1, 2, 0).cpu().numpy()   # CHW -> HWC
-    img = img * STD + MEAN                          # undo normalise
-    return np.clip(img, 0, 1)
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+def denormalize(tensor: torch.Tensor) -> np.ndarray:
+    """Convert a normalised CIFAR-10 CHW tensor to HWC numpy in [0, 1]."""
+    mean = torch.tensor(CIFAR10_MEAN).view(3, 1, 1)
+    std  = torch.tensor(CIFAR10_STD).view(3, 1, 1)
+    img = torch.clamp(tensor * std + mean, 0.0, 1.0)
+    return img.permute(1, 2, 0).numpy()
 
 
-# ══════════════════════════════════════════════════════════════════════════
-#  Visualisation
-# ══════════════════════════════════════════════════════════════════════════
-def visualize_augmentations(num_examples=10,
-                             save_path="results/augmentation_examples.png"):
+def save_augmentation_examples(originals, view1s, view2s, out_path, max_rows=10):
     """
-    Shows `num_examples` rows, each containing:
-        Original Image | Augmented View 1 | Augmented View 2
+    Save a grid of Original | View 1 | View 2 for each image.
+    originals: list of raw PIL images (or tensors before normalisation)
+    view1s, view2s: list of normalised tensors (C, H, W)
     """
-    # Load raw (PIL) images — no transform, so we can apply manually
-    raw_dataset = datasets.CIFAR10(root=DATA_DIR, train=True,
-                                    download=True, transform=None)
-
-    # Load split indices for the labeled set (any split works for visualisation)
-    split_file = os.path.join(SPLIT_DIR, "train_labeled_10percent.txt")
-    if os.path.exists(split_file):
-        with open(split_file) as f:
-            indices = [int(l.strip()) for l in f if l.strip()]
-    else:
-        # Fallback: first N images
-        indices = list(range(num_examples * 5))
-
-    # Pick evenly-spaced samples
-    step     = max(1, len(indices) // num_examples)
-    selected = [indices[i * step] for i in range(num_examples)]
-
-    CIFAR10_CLASSES = [
-        "airplane", "automobile", "bird", "cat", "deer",
-        "dog", "frog", "horse", "ship", "truck"
-    ]
-
-    fig, axes = plt.subplots(num_examples, 3,
-                              figsize=(7, num_examples * 2.2))
-    fig.suptitle("SimCLR Augmentation Examples\n"
-                 "Original  |  Augmented View 1  |  Augmented View 2",
-                 fontsize=13, y=1.01)
+    rows = min(max_rows, len(originals))
+    fig, axes = plt.subplots(rows, 3, figsize=(7, 2.2 * rows))
+    if rows == 1:
+        axes = np.expand_dims(axes, 0)
 
     col_titles = ["Original", "Augmented View 1", "Augmented View 2"]
-    for col, title in enumerate(col_titles):
-        axes[0, col].set_title(title, fontsize=10, fontweight="bold")
+    for c, title in enumerate(col_titles):
+        axes[0, c].set_title(title, fontsize=10, fontweight="bold", pad=6)
 
-    for row, idx in enumerate(selected):
-        pil_img, label = raw_dataset[idx]
-        class_name     = CIFAR10_CLASSES[label]
+    for r in range(rows):
+        # Original — PIL image → numpy
+        orig = np.array(originals[r])          # (H, W, 3), uint8
+        v1   = denormalize(view1s[r])
+        v2   = denormalize(view2s[r])
 
-        view1, view2   = TwoViewTransform(simclr_transform)(pil_img)
+        axes[r, 0].imshow(orig)
+        axes[r, 1].imshow(v1)
+        axes[r, 2].imshow(v2)
 
-        # Original (convert PIL -> numpy)
-        axes[row, 0].imshow(pil_img)
-        axes[row, 0].set_ylabel(class_name, fontsize=8, rotation=0,
-                                 labelpad=40, va="center")
+        for c in range(3):
+            axes[r, c].axis("off")
 
-        # View 1
-        axes[row, 1].imshow(denormalize(view1))
-
-        # View 2
-        axes[row, 2].imshow(denormalize(view2))
-
-        for col in range(3):
-            axes[row, col].axis("off")
-
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"[Plot] Augmentation examples saved to {save_path}")
+    fig.suptitle("SimCLR Augmentation Examples: Original | View 1 | View 2",
+                 fontsize=12, fontweight="bold", y=1.01)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    print(f"[Saved] {out_path}")
 
 
-# ══════════════════════════════════════════════════════════════════════════
-#  Main
-# ══════════════════════════════════════════════════════════════════════════
+# ─── Main ─────────────────────────────────────────────────────────────────────
 def main():
     set_seed(SEED)
 
-    print("\n[Task 2] Augmentation pipeline and two-view transform\n")
-    print("SimCLR transform pipeline:")
-    print("  1. RandomResizedCrop(32, scale=(0.2, 1.0))")
-    print("  2. RandomHorizontalFlip(p=0.5)")
-    print("  3. ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1)")
-    print("  4. RandomGrayscale(p=0.2)")
-    print("  5. ToTensor()")
-    print("  6. Normalize(CIFAR-10 mean/std)\n")
+    # Load dataset without any transform to get raw PIL images for display
+    raw_dataset = get_cifar10_subset(
+        data_root=DATA_ROOT,
+        split_file=os.path.join(SPLITS_DIR, "train_labeled_10percent.txt"),
+        train=True,
+        transform=None,          # raw PIL
+        download=True,
+    )
 
-    visualize_augmentations(num_examples=10,
-                             save_path=os.path.join(RESULT_DIR,
-                                                     "augmentation_examples.png"))
+    # Apply two-view transform separately so we can keep the raw PIL too
+    two_view = TwoViewTransform(simclr_transform)
 
-    # ── Conceptual answers ────────────────────────────────────────────────
-    print("\n" + "=" * 60)
-    print("Answers to Augmentation Questions:")
-    print("=" * 60)
-    print("""
-Q1. Are the two augmented views identical?
-    No. Each view is produced by independently sampling random
-    crop positions, flip decisions, colour jitter magnitudes,
-    and grayscale probabilities, so the two views differ.
+    NUM_EXAMPLES = 10
 
-Q2. Do they still represent the same object?
-    Yes. All transforms are content-preserving; they change
-    appearance (colour, crop region, orientation) but not
-    the object identity.
+    originals, view1s, view2s = [], [], []
+    for i in range(NUM_EXAMPLES):
+        pil_img, _ = raw_dataset[i]
+        v1, v2 = two_view(pil_img)
+        originals.append(pil_img)
+        view1s.append(v1)
+        view2s.append(v2)
 
-Q3. Why should SimCLR treat them as a positive pair?
-    Because they originate from the same image. The model
-    should learn representations that are invariant to these
-    appearance changes, so both views should map to similar
-    points in feature space.
+    save_augmentation_examples(
+        originals, view1s, view2s,
+        out_path=os.path.join(RESULTS_DIR, "augmentation_examples.png"),
+        max_rows=NUM_EXAMPLES,
+    )
 
-Q4. What could go wrong if augmentations are too weak?
-    Views would look almost identical. The contrastive task
-    becomes trivially easy (the model matches near-identical
-    patches rather than learning semantic invariances),
-    leading to poor generalisation.
+    # ── Demonstration: TwoViewDataset wrapping ────────────────────────────────
+    # This is also provided by the starter dataset_splits.py
+    ssl_base = get_cifar10_subset(
+        data_root=DATA_ROOT,
+        split_file=os.path.join(SPLITS_DIR, "train_ssl_unlabeled.txt"),
+        train=True,
+        transform=None,
+        download=False,
+    )
+    two_view_dataset = TwoViewDataset(ssl_base, two_view)
+    sample_v1, sample_v2, _ = two_view_dataset[0]
+    print(f"TwoViewDataset demo — view1 shape: {sample_v1.shape}, view2 shape: {sample_v2.shape}")
+    print(f"SSL unlabeled dataset size: {len(two_view_dataset)}")
 
-Q5. What could go wrong if augmentations are too strong?
-    Views may no longer visually represent the same object
-    (e.g. entirely different crops, complete colour destruction).
-    The model gets conflicting signals and cannot form
-    meaningful positive pairs, degrading representation quality.
-""")
-    print("[Done] Task 2 complete.")
+    # ── Conceptual questions (answers in report) ──────────────────────────────
+    print("\n--- Augmentation Task Q&A (for report) ---")
+    print("Q1. Are the two augmented views identical?")
+    print("    No. Each call to the stochastic transform produces a different random crop,")
+    print("    flip, colour jitter, and optional grayscale.")
+    print()
+    print("Q2. Do they still represent the same object?")
+    print("    Yes. The augmentations are designed to preserve the semantic content.")
+    print()
+    print("Q3. Why should SimCLR treat them as a positive pair?")
+    print("    Both views are derived from the same source image. Their underlying")
+    print("    visual content is identical, so their feature representations should")
+    print("    be similar; SimCLR uses this as a free supervisory signal.")
+    print()
+    print("Q4. What if augmentations are too weak?")
+    print("    Views will look nearly identical. The model can trivially match them")
+    print("    without learning semantically meaningful features.")
+    print()
+    print("Q5. What if augmentations are too strong?")
+    print("    Views may lose their semantic content (e.g., extreme crops that show")
+    print("    different objects). The positive pair assumption breaks and the model")
+    print("    receives a noisy training signal.")
 
 
 if __name__ == "__main__":
