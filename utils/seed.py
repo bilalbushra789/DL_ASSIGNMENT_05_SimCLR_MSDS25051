@@ -1,10 +1,27 @@
-import random, numpy as np, torch
+"""Random seed helper for Assignment 5."""
 
-def set_seed(seed=2026):
+from __future__ import annotations
+
+import os
+import random
+
+import numpy as np
+import torch
+
+
+def set_seed(seed: int = 2026, deterministic: bool = True) -> None:
+    """Set seeds for Python, NumPy, and PyTorch.
+
+    Args:
+        seed: Random seed.
+        deterministic: If True, use deterministic CuDNN behavior when possible.
+    """
+    os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-    print(f"Seed set to {seed}")
+
+    if deterministic:
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
