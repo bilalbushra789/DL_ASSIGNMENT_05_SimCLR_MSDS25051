@@ -89,7 +89,7 @@ pip install torch torchvision scikit-learn matplotlib numpy
 - Projection Head
 - Positive and Negative Pair Construction
 - Cosine Similarity Matrix
-- NT-Xent Loss (from scratch)
+- NT-Xent Loss
 
 ---
 
@@ -142,7 +142,7 @@ For a batch of N original images, TwoViewTransform produces 2N augmented views:
 **Positive pair:** `(i, i+N)` — two augmented views of the same image  
 **Negative pairs:** all other `2N-2` views per anchor — labels never used
 
-**Positive Pair Table (N=4 small batch as per assignment spec):**
+**Positive Pair Table**
 
 | Original Image | View 1 Index | View 2 Index | Positive Pair |
 |---|---|---|---|
@@ -215,18 +215,6 @@ where `sim(a,b)` = cosine similarity, `tau = 0.5`
 - For a random encoder, NT-Xent loss ≈ `log(2N-1)`
 - With N=8: `log(15)` ≈ **2.7081**
 - Observed loss: **2.6993** confirms correct implementation
-
----
-
-## Expected GitHub Commits This Checkpoint
-
-```
-implemented encoder and projection head
-implemented positive and negative pair construction
-implemented cosine similarity matrix
-implemented NT-Xent loss from scratch
-added positive pair indexing
-```
 
 ---
 
