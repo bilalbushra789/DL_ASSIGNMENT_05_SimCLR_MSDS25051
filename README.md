@@ -235,3 +235,123 @@ python msds25051_05_task4_simclr.py
 - No SimCLR libraries used
 - Labels not used anywhere in Task 4
 
+# Checkpoint 3 — Day 9
+## SimCLR Pretraining
+
+### What Was Implemented
+- SimCLR pretraining loop (unlabeled data, no labels used)
+- NT-Xent loss curve generation
+- Feature similarity before vs after SimCLR training
+- Similarity matrix after training
+
+---
+
+
+## Task 5 — SimCLR Pretraining
+
+### Dataset
+- Split used: `train_ssl_unlabeled.txt`
+- Total samples: **45,000**
+- Labels: **NOT used** anywhere during pretraining
+- Batches per epoch: **703** (drop_last=True for stable NT-Xent)
+
+---
+
+### Fixed Training Settings (Section 6)
+
+| Setting | Value Used |
+|---|---|
+| Dataset | CIFAR-10 unlabeled |
+| Encoder | ResNet-18 modified for CIFAR-10 |
+| Image size | 32 × 32 |
+| Batch size | 64 |
+| Epochs | 50 |
+| Optimizer | Adam |
+| Learning rate | 3e-4 |
+| Temperature (tau) | 0.5 |
+| Projection dimension | 128 |
+| Random seed | 2026 |
+| Labels used? | NO |
+| GPU | CUDA |
+| Approximate training time | ~82.3 min |
+
+---
+
+### Training Loop
+
+- For each batch: load view1 and view2 (no labels)
+- Forward pass through encoder → projection head → 128-dim z1, z2
+- Compute NT-Xent loss on z1, z2
+- Backpropagate and update with Adam optimizer
+- Record loss per epoch
+
+---
+
+### Loss Curve
+
+| Epoch | Loss |
+|-------|------|
+| 1     | 3.8478 |
+| 5     | 3.4306 |
+| 10    | 3.3432 |
+| 15    | 3.3053 |
+| 20    | 3.2801 |
+| 25    | 3.2613 |
+| 30    | 3.2457 |
+| 35    | 3.2337 |
+| 40    | 3.2220 |
+| 45    | 3.2124 |
+| 50    | 3.2057 |
+
+Loss decreased steadily from **3.8478 → 3.2057** over 50 epochs.
+
+**Output:** `graphs/simclr_pretraining_loss.png`
+
+---
+
+### Feature Similarity — Before vs After SimCLR Training
+
+| Pair Type | Before SimCLR | After SimCLR |
+|---|---|---|
+| Same image, two augmented views | 0.9890 | 0.9141 |
+| Different images | 0.9855 | 0.3211 |
+| **Positive-Negative Gap** | **0.0035** | **0.5930** |
+
+**Output:** `results/similarity_matrix_after_training.png`
+
+---
+
+### Analysis
+
+**Before training:**
+- Positive similarity (0.9890) ≈ Negative similarity (0.9855)
+- Gap = **0.0035** — random encoder cannot distinguish same vs different images
+
+**After training:**
+- Negative similarity dropped sharply: 0.9855 → **0.3211**
+- Positive similarity stayed high: 0.9890 → **0.9141**
+- Gap = **0.5930** — 169× larger than before training
+
+SimCLR successfully learned to bring two augmented views of the same
+image closer together while pushing views from different images apart.
+Training was **successful**.
+
+---
+
+## How to Run
+
+```bash
+python msds25051_05_task5_pretraining.py
+```
+
+**Requirements:** `torch`, `torchvision`, `numpy`, `matplotlib`  
+**splits/** folder must contain `train_ssl_unlabeled.txt`  
+**models/** folder will be created automatically
+
+---
+
+## Notes
+- `drop_last=True` in DataLoader ensures every batch is exactly N=64
+- Similarity computed on encoder features (512-dim), not projection (128-dim)
+- Encoder weights saved to `models/simclr_encoder.pt` for Tasks 6 and 7
+- Labels never loaded or used at any point during this checkpoint
