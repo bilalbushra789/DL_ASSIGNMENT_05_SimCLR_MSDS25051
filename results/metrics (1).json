@@ -1,0 +1,19 @@
+{
+    "student_name": "bilal_bushra",
+    "roll_number": "msds25051",
+    "seed": 2026,
+    "batch_size": 64,
+    "simclr_epochs": 50,
+    "linear_probe_epochs": 20,
+    "finetuning_epochs": 20,
+    "learning_rate": 0.0003,
+    "temperature": 0.5,
+    "supervised_10percent_test_acc": 0.7483,
+    "random_linear_probe_test_acc": 0.2537,
+    "simclr_linear_probe_test_acc": 0.7316,
+    "simclr_finetune_test_acc": 0.8196,
+    "same_view_similarity_before": 0.989,
+    "different_image_similarity_before": 0.9855,
+    "same_view_similarity_after": 0.9141,
+    "different_image_similarity_after": 0.3211
+}
