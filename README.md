@@ -355,3 +355,179 @@ python msds25051_05_task5_pretraining.py
 - Similarity computed on encoder features (512-dim), not projection (128-dim)
 - Encoder weights saved to `models/simclr_encoder.pt` for Tasks 6 and 7
 - Labels never loaded or used at any point during this checkpoint
+
+
+# Checkpoint 4 — Day 12
+## Linear Probing, Fine-tuning, Visualization, and Final Report
+
+### What Was Implemented
+- Linear probing (random encoder + SimCLR encoder)
+- Fine-tuning (SimCLR pretrained encoder, full end-to-end)
+- PCA/t-SNE feature visualization 
+- metrics.json generation
+- test_predictions.csv generation
+- Final report
+
+---
+
+## Files Added This Checkpoint
+
+```
+msds25051_05_task6_linear_probe.py
+msds25051_05_task7_fine_tune.py
+msds25051_05_task8_pca.py
+generate_final_outputs.py
+models/
+  linear_probe.pt
+  finetuned_model.pt
+graphs/
+  linear_probe_accuracy.png
+  finetuning_accuracy.png
+results/
+  random_encoder_pca_or_tsne.png
+  simclr_encoder_pca_or_tsne.png
+  finetuned_encoder_pca_or_tsne.png
+  metrics.json
+  test_predictions.csv
+Report.pdf
+```
+
+---
+
+## Task 6 — Linear Probe Evaluation
+
+### Setup
+- Encoder: **completely frozen** in both experiments
+- Trainable part: `Linear(512 -> 10)` only (5,130 parameters)
+- Splits: `train_labeled_10percent.txt`, `val.txt`, `test.txt`
+- Epochs: 20, Optimizer: Adam, LR: 3e-4
+
+### Results
+
+| Model | Encoder | Trainable Part | Test Accuracy |
+|---|---|---|---|
+| Random Linear Probe | Random frozen | Linear only | 25.37% |
+| SimCLR Linear Probe | SimCLR frozen | Linear only | **73.16%** |
+
+**SimCLR improvement over random: +47.79%**
+
+This gap — achieved with the same frozen architecture and same linear head — directly proves SimCLR learned genuinely useful visual representations entirely without labels.
+
+**Output:** `graphs/linear_probe_accuracy.png`
+
+---
+
+## Task 7 — Fine-tuning the SimCLR Encoder
+
+### Setup
+- Encoder initialized with SimCLR pretrained weights
+- Full model trained end-to-end (encoder + classifier, all parameters)
+- Splits: `train_labeled_10percent.txt`, `val.txt`, `test.txt`
+- Epochs: 20, Optimizer: Adam, LR: 3e-4
+
+### Final Comparison Table
+
+| Experiment | Test Accuracy |
+|---|---|
+| Supervised ResNet-18 from scratch (10% labels) | 74.83% |
+| Random frozen encoder + linear classifier | 25.37% |
+| SimCLR frozen encoder + linear classifier | 73.16% |
+| SimCLR pretrained encoder + full fine-tuning | **81.96%** |
+
+SimCLR + fine-tuning (81.96%) outperforms supervised baseline (74.83%) by **+7.13%** — despite NO labels during pretraining.
+
+**Output:** `graphs/finetuning_accuracy.png`
+
+---
+
+## Task 8 — PCA / t-SNE Feature Visualization
+
+### Setup
+- Method: t-SNE (PCA to 50 dims first, then t-SNE to 2D)
+- Validation images: 1,000 fixed (seed=2026)
+- Labels used: only for coloring, NOT during training
+
+### Three Encoders
+
+| Encoder | Observation |
+|---|---|
+| Random untrained | All 10 classes fully mixed — no grouping |
+| SimCLR pretrained | Visible partial clustering by class |
+| Fine-tuned | Clear tight clusters per class |
+
+### Questions Answered
+
+**Q1. Random encoder grouping?** No — all classes overlap, no semantic structure.
+
+**Q2. SimCLR encoder better grouping?** Yes — visible clusters emerge without any labels.
+
+**Q3. Fine-tuning improve separation?** Yes, significantly — tight compact clusters for all classes.
+
+**Q4. Confused classes?** cat/dog, bird/airplane/deer, automobile/truck.
+
+**Outputs:**
+- `results/random_encoder_pca_or_tsne.png`
+- `results/simclr_encoder_pca_or_tsne.png`
+- `results/finetuned_encoder_pca_or_tsne.png`
+
+---
+
+## metrics.json
+
+```json
+{
+    "student_name": "bilal_bushra",
+    "roll_number": "msds25051",
+    "seed": 2026,
+    "batch_size": 64,
+    "simclr_epochs": 50,
+    "linear_probe_epochs": 20,
+    "finetuning_epochs": 20,
+    "learning_rate": 0.0003,
+    "temperature": 0.5,
+    "supervised_10percent_test_acc": 0.7483,
+    "random_linear_probe_test_acc": 0.2537,
+    "simclr_linear_probe_test_acc": 0.7316,
+    "simclr_finetune_test_acc": 0.8196,
+    "same_view_similarity_before": 0.9890,
+    "different_image_similarity_before": 0.9855,
+    "same_view_similarity_after": 0.9141,
+    "different_image_similarity_after": 0.3211
+}
+```
+
+**Output:** `results/metrics.json`
+
+---
+
+## test_predictions.csv
+
+Format: `image_index, true_label, predicted_label, prob_class_0, ..., prob_class_9`
+
+Generated from the fine-tuned model on 10,000 test images.
+Fine-tuned model test accuracy: **81.96%**
+
+**Output:** `results/test_predictions.csv`
+
+---
+
+
+## How to Run
+
+```bash
+# Task 6 — Linear probing
+python msds25051_05_task6_linear_probe.py
+
+# Task 7 — Fine-tuning
+python msds25051_05_task7_fine_tune.py
+
+# Task 8 — t-SNE visualization
+python msds25051_05_task8_pca.py
+
+```
+
+**Requirements:** `torch`, `torchvision`, `sklearn`, `numpy`, `matplotlib`
+**models/simclr_encoder.pt** must exist 
+
+---
+
