@@ -93,6 +93,7 @@ pip install torch torchvision scikit-learn matplotlib numpy
 ## Files Added This Checkpoint
 
 ```
+msds25051_05_task3_similarity.py
 msds25051_05_task4_simclr.py
 results/
   similarity_matrix_before_training.png
