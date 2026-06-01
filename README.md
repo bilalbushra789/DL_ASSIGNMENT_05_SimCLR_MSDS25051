@@ -384,7 +384,6 @@ results/
   simclr_encoder_pca_or_tsne.png
   finetuned_encoder_pca_or_tsne.png
   metrics.json
-  test_predictions.csv
 Report.pdf
 ```
 
