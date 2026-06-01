@@ -269,7 +269,7 @@ python msds25051_05_task4_simclr.py
 | Random seed | 2026 |
 | Labels used? | NO |
 | GPU | CUDA |
-| Approximate training time | ~82.3 min |
+
 
 ---
 
@@ -360,8 +360,7 @@ python msds25051_05_task5_pretraining.py
 - Linear probing (random encoder + SimCLR encoder)
 - Fine-tuning (SimCLR pretrained encoder, full end-to-end)
 - PCA/t-SNE feature visualization 
-- metrics.json generation
-- test_predictions.csv generation
+- metrics.json 
 - Final report
 
 ---
@@ -372,7 +371,6 @@ python msds25051_05_task5_pretraining.py
 msds25051_05_task6_linear_probe.py
 msds25051_05_task7_fine_tune.py
 msds25051_05_task8_pca.py
-generate_final_outputs.py
 models/
   linear_probe.pt
   finetuned_model.pt
