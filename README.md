@@ -15,8 +15,6 @@ checkpoint1/
 │   └── visualization.py
 ├── task1_supervised.py
 ├── task2_augmentations.py
-├── task3_similarity.py
-└── allCode.py
 ```
 
 ## Tasks in Checkpoint 1
@@ -25,8 +23,7 @@ checkpoint1/
 |---|---|
 | `task1_supervised.py` | Supervised ResNet-18 baseline, 10% labels |
 | `task2_augmentations.py` | SimCLR augmentation pipeline + visualisation |
-| `task3_similarity.py` | Cosine similarity before SimCLR training |
-| `allCode.py` | Runs all three tasks in sequence |
+
 
 ## How to run
 
@@ -34,7 +31,7 @@ checkpoint1/
 ```bash
 python task1_supervised.py
 python task2_augmentations.py
-python task3_similarity.py
+
 ```
 
 ## Expected outputs
@@ -66,7 +63,7 @@ models/supervised_best.pt
 ## ResNet-18 CIFAR-10 modifications
 - `conv1`: 3×3 kernel, stride 1, padding 1 (instead of 7×7 stride 2)
 - `maxpool`: replaced with `nn.Identity()`
-- `fc`: Linear(512 → 10) for supervised; Linear(512 → 512) identity for encoder-only tasks
+- `fc`: Linear(512 → 10) for supervised; Linear identity for encoder-only tasks
 
 ## Requirements
 ```
@@ -186,8 +183,6 @@ separate different images.
 | Same image, two augmented views | 0.9839 |
 | Different images | 0.9791 |
 
-Both values are nearly equal (~0.98), confirming the random encoder
-has no concept of which views belong together.
 
 ---
 
@@ -425,16 +420,6 @@ This gap — achieved with the same frozen architecture and same linear head —
 - Splits: `train_labeled_10percent.txt`, `val.txt`, `test.txt`
 - Epochs: 20, Optimizer: Adam, LR: 3e-4
 
-### Final Comparison Table
-
-| Experiment | Test Accuracy |
-|---|---|
-| Supervised ResNet-18 from scratch (10% labels) | 74.83% |
-| Random frozen encoder + linear classifier | 25.37% |
-| SimCLR frozen encoder + linear classifier | 73.16% |
-| SimCLR pretrained encoder + full fine-tuning | **81.96%** |
-
-SimCLR + fine-tuning (81.96%) outperforms supervised baseline (74.83%) by **+7.13%** — despite NO labels during pretraining.
 
 **Output:** `graphs/finetuning_accuracy.png`
 
